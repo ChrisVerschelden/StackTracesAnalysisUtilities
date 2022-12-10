@@ -77,7 +77,7 @@ def command_handler(user_input, r):
         $ workflow_p_s [source] [stacktracesHeaderID] [params...]
             $ alt  : wps
             $ desc : automatic workflow to get the probability for at least one record in a stacktrace to match all 
-                        the given parameters (load -> sort by stacktrace -> satisfy)
+                     the given parameters (load -> sort by stacktrace -> satisfy)
         ''')
         return 0, "ok"
 
