@@ -1,3 +1,7 @@
+# don't include work_files and csv's
+*.csv
+work_files/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
