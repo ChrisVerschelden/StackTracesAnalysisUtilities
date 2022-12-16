@@ -40,30 +40,69 @@ py ./stau.pyz workspace
 
 Available commands inside the workspace
 ```
-$ load [source]
-    $ alt  : l
-    $ desc : load data from csv file (must have a header with columns name)
-$ load_workfile [source]
-    $ alt  : lwf
-    $ desc : load previously created work file 
-$ sort_by_stacktrace [stacktracesHeaderID]
-    $ alt  : sst
-    $ desc : sort the loaded data based on the column with header stacktracesHeaderID to recompose stack traces
-$ store_in_workfile
-    $ alt  : swf
-    $ desc : store the currently loaded data in a workfile (i.e: to avoid sorting the same data twice)
-$ satisfy [params...]
-    $ alt  : s
-    $ desc : check if a row in the loaded data match all the given parameters
-$ workflow_s [source] [params...]
-    $ alt  : ws
-    $ desc : automatic workflow to execute satisfy (load -> satisfy)
-$ probability_satisfy [stacktracesHeaderID] [params...]
-    $ alt  : ps
-    $ desc : get the probability for at least one record in a stacktrace to match all the given parameters
-$ workflow_p_s [source] [stacktracesHeaderID] [params...]
-    $ alt  : wps
-    $ desc : automatic workflow to get the probability for at least one record in a stacktrace to match all
-             the given parameters (load -> sort by stacktrace -> satisfy)
+available commands :
+    the 'alt' field give an alternative call for the command
+    $ quit
+        $ alt  : q
+        $ desc : quit the workspace and exit the program
+    $ load [source]
+        $ alt  : l
+        $ desc : load data from csv file (must have a header with columns name)
+    $ load_workfile [source]
+        $ alt  : lwf
+        $ desc : load previously created work file 
+    $ arrange_by_stacktrace [stacktracesHeaderID]
+        $ alt  : ast
+        $ desc : sort the loaded data based on the column with header stacktracesHeaderID to recompose stack traces
+    $ store_in_workfile
+        $ alt  : swf
+        $ desc : store the currently loaded data in a workfile (i.e: to avoid sorting the same data twice)
+    $ satisfy [params...]
+        $ alt  : s
+        $ desc : check if a row in the loaded data match all the given parameters
+    $ probability_satisfy [params...]
+        $ alt  : ps
+        $ desc : calculate the probability for a row in the loaded data to match all the given parameters
+    $ workflow_s [source] [params...]
+        $ alt  : ws
+        $ desc : automatic workflow to execute satisfy (load -> satisfy)
+    $ satisfy_stacktraces [stacktracesHeaderID] [params...]
+        $ alt  : sst
+        $ desc : check if at least one stacktrace contains a record that match all the given parameters
+    $ probability_satisfy_stacktraces [stacktracesHeaderID] [params...]
+        $ alt  : psst
+        $ desc : calculate the probability for at least one record in list of stacktraces to match all the given parameters
+    $ workflow_p_s_stacktraces [source] [stacktracesHeaderID] [params...]
+        $ alt  : wpsst
+        $ desc : automatic workflow to get the probability for at least one record in a stacktrace to match all
+                    the given parameters (load -> sort by stacktrace -> satisfy)
+    $ probability_satisfy_until_stacktraces [stacktracesHeaderID] [params...] -U [params goal]
+        $ alt  : psust
+        $ desc : calculate the probability for at least one record in list of stacktraces to match all the given parameters until the second params
+
+    you can add 'time' before any command to get the time it took to execute
 ```
+
+
+## To execute the requests from the TP follow those commands in the workspace
+
+```
+l intrusion.csv
+```
+```
+s ('Src_IP','192.168.0.13') ('Label','Anomaly')
+```
+```
+ps ('Src_IP','192.168.0.13') ('Label','Anomaly')
+```
+```
+ast Timestamp
+```
+```
+psst ('Src_IP','192.168.0.13') ('Label','Anomaly')
+```
+```
+psust ('Src_IP','192.168.0.13') ('Label','Normal') -U ('Label','Anomaly')
+```
+
 

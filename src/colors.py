@@ -1,4 +1,5 @@
 def colored_text(text, color):
+    text = str(text)
     #text color only
     if color == 'red':
         return "\033[1;31m" + text + "\033[0;0m"
@@ -12,6 +13,7 @@ def colored_text(text, color):
         return "\033[1;36m" + text + "\033[0;0m"
 
 def colored_background(text, color):
+    text = str(text)
     #backgroung color only
     if color == 'red':
         return "\033[1;41m" + text + "\033[0;0m"

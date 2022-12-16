@@ -13,25 +13,30 @@ class StackTracesUtilities:
         self.NB_SPACE = 20
         self.nb_rows = 0
         self.all_rows = []
+        self.all_stacktraces = []
         self.header = []  
         self.stacktraceIdHeader = "" 
         self.header_index_of_stacktraceID = 0   
 
+
     def get_nb_rows(self):
         return self.nb_rows
-    
+
+
     def get_header(self):
         return self.header
 
-    def waiting_indicator(self, nb_stacktrace_total, nb_stacktrace_anoma,filler='#'):
+
+    def waiting_indicator(self, nb_stacktrace_total, nb_stacktrace_anoma,item,filler='#'):
         sys.stdout.flush()
-        sys.stdout.write("[\033[%s] current stacktrace: %i | stacktraces containing anomalies: %i\r" % (colored_text(self.NB_FILLERS*"#" + self.NB_SPACE*' ', 'green'), nb_stacktrace_total, nb_stacktrace_anoma+1) )
+        sys.stdout.write("[\033[%s] current %s: %i | %ss satifying parameters: %i\r" % (colored_text(self.NB_FILLERS*"#" + self.NB_SPACE*' ', 'green'), item, nb_stacktrace_total,item, nb_stacktrace_anoma+1) )
         
         self.NB_FILLERS += 1
         self.NB_SPACE -= 1
         if self.NB_SPACE == 0:
             self.NB_FILLERS = 0
             self.NB_SPACE = 20
+
 
     def satisfy_all_params(self, row, params):
         """
@@ -43,27 +48,48 @@ class StackTracesUtilities:
         params -- a list of tuples of the form (Header, Value) where Header is the name of a column of the csv file 
                   and Value the content of the cell
         """
+        params = self.recompose_params(params)
         satisfy = True
-        for param, value in params:
+        for param in params:
             if param not in self.header:
                 print_error("%s his not a valid header for the current data" % param)
-                
-            if row[self.header.index(param)] != value:
+            if row[self.header.index(param)] not in params[param]:
+                #print_warning(str(param) + str(params[param]))
                 satisfy = False
-
         return satisfy
 
-    def F(self, params):
+
+    def recompose_params(self, input_params):
+        input_params.sort(key=lambda x: x[0])
+        current_header = ''
+        output_params  = {}
+        for header, value in input_params:
+            if current_header == '' or current_header != header:
+                current_header = header
+                output_params[header] = []
+            output_params[header].append(value)
+        return output_params
+
+
+    def F(self, params, probability=False):
         if self.nb_rows == 0:
             print_error("you haven't loaded any data yet")
-            
+        nb_rec_satisfy = 0
+        nb_rec_total   = 0    
         for row in self.all_rows:
+            nb_rec_total += 1
             if self.satisfy_all_params(row, params):
-                print_result('first record matching your request :')
-                print_result(' '.join(row))
-                break
+                nb_rec_satisfy += 1
+                if not probability:
+                    print_status(' '.join(row))
+                    print_result('found at least one matching result')
+                    return
+                else:
+                    self.waiting_indicator(nb_rec_total, nb_rec_satisfy, 'record')
+        print_result("\n%i%s (%i out of %i) of records match your request : %s \n" % ((nb_rec_satisfy*100)/nb_rec_total, '%', nb_rec_satisfy, nb_rec_total, ' && '.join([h+':'+v for h, v in params])))
 
-    def P_F_by_stacktrace(self, stacktraceIdHeader, params, display_anomaly=False):
+
+    def F_by_stacktrace(self, stacktraceIdHeader, params, display_anomaly=False, probability=False):
         if self.nb_rows == 0:
             print_error("you need to load data and sort it by stacktraces before running this command")
             return
@@ -87,7 +113,7 @@ class StackTracesUtilities:
 
             #change stacktraceID on stacktrace change
             if row[self.header_index_of_stacktraceID] != stacktraceID_current:
-                self.waiting_indicator(nb_stacktrace_total, nb_stacktrace_anoma)
+                self.waiting_indicator(nb_stacktrace_total, nb_stacktrace_anoma, 'stacktrace')
                 stacktraceID_current  = row[self.header_index_of_stacktraceID]
                 nb_stacktrace_total += 1
                 anomaly_found = False
@@ -98,9 +124,55 @@ class StackTracesUtilities:
                 nb_stacktrace_anoma += 1
                 anomaly_found = True
                 if display_anomaly:
-                    print_status(stacktraceID_current)                
+                    print_status(stacktraceID_current)
+                #if the user doesn't want probability, print first match then exit function
+                if not probability:
+                    print_result('found at least one corresponding result')
+                    return               
 
-        print_result("\n%i%s (%i out of %i) of stacktraces match your request : %s \n" % ((nb_stacktrace_anoma*100)/nb_stacktrace_total, '%', nb_stacktrace_anoma, nb_stacktrace_total, ' && '.join([h+':'+v for h, v in params])))
+        print_result("\n%f%s (%i out of %i) of stacktraces match your request : %s \n" % ((nb_stacktrace_anoma*100)/nb_stacktrace_total, '%', nb_stacktrace_anoma, nb_stacktrace_total, ' && '.join([h+':'+v for h, v in params])))
+
+
+    def F_Until_by_stacktrace(self, stacktraceIdHeader, param_while, param_until, display_anomaly=False, probability=False):
+        if self.nb_rows == 0:
+            print_error("you need to load data and sort it by stacktraces before running this command")
+            return
+
+        #initialise loop and stats variables
+        nb_rows_passed = 0
+        nb_stacktrace_anoma = 0
+        nb_stacktrace_total = 0
+        stacktraceID_current = ""
+        skip_stacktrace = False
+        start_with_param_while = False
+
+        self.header_index_of_stacktraceID = self.header.index(stacktraceIdHeader)
+
+        #passing through all stacktraces (determined by stacktraceID)
+        print_status("proccessing your request...")
+        for row in self.all_rows:
+            #change stacktraceID on stacktrace change
+            if row[self.header_index_of_stacktraceID] != stacktraceID_current or stacktraceID_current == "":
+                self.waiting_indicator(nb_stacktrace_total, nb_stacktrace_anoma, 'stacktrace')
+                stacktraceID_current  = row[self.header_index_of_stacktraceID]
+                nb_stacktrace_total += 1
+                skip_stacktrace = False
+                start_with_param_while = self.satisfy_all_params(row, param_while)
+            
+
+            if (not skip_stacktrace) and start_with_param_while and (not self.satisfy_all_params(row, param_while)) and row[self.header_index_of_stacktraceID] == stacktraceID_current:
+                if self.satisfy_all_params(row, param_until):
+                    nb_stacktrace_anoma += 1
+                skip_stacktrace = True
+                if display_anomaly:
+                    print_status(stacktraceID_current)
+                #if the user doesn't want probability, print first match then exit function
+                if not probability:
+                    print_result('found at least one corresponding result')
+                    return               
+
+        print_result("\n%f%s (%i out of %i) of stacktraces match your request : %s \n" % ((nb_stacktrace_anoma*100)/nb_stacktrace_total, '%', nb_stacktrace_anoma, nb_stacktrace_total, ' && '.join([h+':'+v for h, v in param_while]) + " -U " + str(param_until[-1:][0])))
+
 
     def load_data(self, source, refresh=True):
         if not os.path.isfile(source) or source.split('.')[-1:][0] != "csv":
@@ -130,21 +202,6 @@ class StackTracesUtilities:
             self.nb_rows = len(self.all_rows)
             print_success("finished loading")
 
-    def load_data_from_work_file(self):
-        if not os.path.isfile(self.WORK_FILE): 
-            print_error("file doesn't exist")
-            return
-
-        with open(self.WORK_FILE, newline='\n', encoding='UTF8') as csvfile:
-            reader = csv.reader(csvfile, delimiter=",")
-            
-            #get the header
-            self.header = next(reader)
-
-            print_status("loading data from corresponding work file %s..." % (self.WORK_FILE))
-            self.all_rows = list(reader)
-            self.nb_rows = len(self.all_rows)
-            print_success('finished loading')
 
     def sort_data(self, stacktraceIdHeader):
         if self.nb_rows == 0:
@@ -159,6 +216,7 @@ class StackTracesUtilities:
         self.header_index_of_stacktraceID = self.header.index(stacktraceIdHeader)
         self.all_rows.sort(key = lambda x: x[self.header_index_of_stacktraceID])
         print_success('finished sort')
+
 
     def create_work_file(self):
         if self.nb_rows == 0:
@@ -176,6 +234,7 @@ class StackTracesUtilities:
             for row in self.all_rows:
                 writer.writerow(row)
         print_success('work file created')
+
 
     def delete_work_file(self):
         if not os.path.isfile(self.WORK_FILE) : return
